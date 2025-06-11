@@ -1,0 +1,28 @@
+Benchmark functions
+def F23(L):
+    aSH = numpy.asarray([
+        [4, 4, 4, 4],
+        [1, 1, 1, 1],
+        [8, 8, 8, 8],
+        [6, 6, 6, 6],
+        [3, 7, 3, 7],
+        [2, 9, 2, 9],
+        [5, 5, 3, 3],
+        [8, 1, 8, 1],
+        [6, 2, 6, 2],
+        [7, 3.6, 7, 3.6],
+    ])
+    cSH = numpy.asarray([0.1, 0.2, 0.2, 0.4, 0.4, 0.6, 0.3, 0.7, 0.5, 0.5])
+    fit = 0
+    for i in range(10):
+        # Ensure L is treated as a row vector for subtraction
+        v = numpy.matrix(L - aSH[i, :])
+        fit = fit - ((v) * (v.T) + cSH[i]) ** (-1)
+    o = fit.item(0)
+    return o
+
+def F24(x):
+    shifted_x = x - 2
+    dim = len(shifted_x)
+    o = numpy.sum(shifted_x ** 2 - 10 * numpy.cos(2 * math.pi * shifted_x)) + 10 * dim
+    return o
