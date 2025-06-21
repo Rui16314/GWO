@@ -1,0 +1,12 @@
+# Centroid Information for SHIFTED Rastrigin Function (Shift=2, Search Region -5.12 to 5.12)
+# Each row represents the average position (centroid) at the LAST iteration, averaged over 30 trials.
+# Row 1: Average Alpha Position
+# Row 2: Average Beta Position (Placeholder if not explicitly provided)
+# Row 3: Average Delta Position (Placeholder if not explicitly provided)
+# Row 4: Average Swarm Centroid (all wolves in population)
+# Row 5: Average Omega-only Centroid (all wolves excluding the top 3 in current population - Placeholder if not explicitly provided)
+1.40010566,1.25999648,1.30629171,1.42918231,0.99162598,1.31132341,1.22792742,1.35016007,0.75707614,1.47938217,1.24463438,1.23440839,1.45034734,1.32226821,1.62474916,1.36051688,1.74994389,1.32590347,1.20931441,1.04446985,1.47679024,1.27432092,1.37570796,1.40669545,1.36709722,1.42403675,1.54617733,1.16195857,1.46109733,1.38541847
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
+1.41736073,1.25473820,1.33755810,1.42056687,0.98281293,1.41776050,1.29210696,1.32060635,0.73278786,1.48273604,1.22703571,1.22299255,1.42075393,1.28575407,1.59558777,1.38577908,1.77918736,1.31342404,1.21390668,1.03157193,1.45073052,1.23631556,1.36421241,1.37706973,1.35942682,1.43569465,1.50772992,1.16469881,1.44856918,1.37478875
+nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan,nan
