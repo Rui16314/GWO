@@ -1,0 +1,32 @@
+import matplotlib.pyplot as plt
+
+# Every 50th iteration from 0 to 799
+iterations = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 799]
+
+
+alpha_distances = [
+    21.0201, 16.6571, 15.7930, 15.3120, 15.0186, 14.7705, 14.5439, 14.4507,
+    14.3184, 14.2271, 14.0721, 14.0882, 13.9059, 13.7519, 13.6748, 13.7074, 13.6911
+]
+beta_distances = [
+    21.7323, 17.0733, 15.9455, 15.4350, 15.3292, 14.8726, 14.4635, 14.3190,
+    14.3629, 14.1220, 13.9993, 13.7891, 13.9170, 13.8190, 13.7122, 13.6900, 13.6933
+]
+omega_distances = [
+    18.4308, 16.2420, 15.2555, 15.0523, 14.7746, 14.5737, 14.3144, 14.1043,
+    14.1064, 14.0719, 13.9426, 13.8805, 13.8328, 13.6919, 13.6438, 13.6532, 13.6464
+]
+
+# Plotting
+plt.figure(figsize=(10, 6))
+plt.plot(iterations, alpha_distances, marker='o', label='Alpha Dist', color='tab:blue')
+plt.plot(iterations, beta_distances, marker='s', label='Beta Dist', color='tab:orange')
+plt.plot(iterations, omega_distances, marker='^', label='Omega Dist', color='tab:green')
+
+plt.title("Alpha, Beta, Omega Distances Over Iterations")
+plt.xlabel("Iteration")
+plt.ylabel("Distance from Origin")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
