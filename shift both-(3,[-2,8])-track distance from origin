@@ -1,0 +1,376 @@
+import numpy
+import random
+import time
+import gc
+import matplotlib.pyplot as plt  # Still needed for potential debugging if plots are re-added
+import math  
+import sys  t
+
+class solution:
+    def __init__(self):
+        self.convergence = []
+        self.optimizer = ""
+        self.objfname = ""
+        self.bestIndividual = []
+        self.startTime = ""
+        self.endTime = ""
+        self.executionTime = 0
+        self.SE_alpha_dist = []  
+        self.alpha_dist_better = []  
+        self.alpha_dist_worse = []  
+        self.exp_dict = {"SE": [], "DE": [], "FE": [],
+                         "SR": []}  
+        self.alpha_SE_count = 0  
+        self.L_ref_fitness = []  
+    
+        self.alpha_pos_history = []
+        self.beta_pos_history = []
+        self.delta_pos_history = []
+        self.swarm_centroid_history = []
+        self.omega_only_centroid_history = []  # This one will be used for omega average position
+
+def measure_exploration(ref_pos, search_pos, objf):  # position vectors
+    gc.collect()
+    expType = "None"
+    return_list = []
+
+    F_ref = objf(ref_pos)
+    F_search = objf(search_pos)
+
+    L_ref = closest_integer_minima(ref_pos)
+    L_search = closest_integer_minima(search_pos)
+
+    LF_ref = objf(L_ref)
+    LF_search = objf(L_search)
+
+    relF_search = F_search - LF_search
+
+    if (
+            L_ref.tolist() != L_search.tolist()):
+        if LF_search < LF_ref:
+            if F_search < F_ref:
+                expType = "SE"
+            else:
+                expType = "FE"
+        else:
+            if F_search < F_ref:
+                expType = "DE"
+            else:
+                expType = "SR"
+
+    return_list.append(expType)
+    return_list.append(relF_search)
+    return return_list
+
+def closest_integer_minima(pos):
+    return numpy.round(pos)
+
+def rastrigin_function_factory(shift_amount):
+    def rastrigin(x):
+        shifted_x = x - shift_amount
+        dim = len(shifted_x)
+        o = numpy.sum(shifted_x ** 2 - 10 * numpy.cos(2 * math.pi * shifted_x) + 10)
+        return o
+
+    rastrigin.__name__ = f"Rastrigin (Optimum Shifted by {shift_amount})"
+    return rastrigin
+
+def GWO(objf, lb, ub, dim, SearchAgents_no, Max_iter, no_repeat):
+    gc.collect()
+
+    Alpha_pos = numpy.zeros(dim)
+    Alpha_score = float("inf")
+
+    Beta_pos = numpy.zeros(dim)
+    Beta_score = float("inf")
+
+    Delta_pos = numpy.zeros(dim)
+    Delta_score = float("inf")
+
+    if not isinstance(lb, list):
+        lb = [lb] * dim
+    if not isinstance(ub, list):
+        ub = [ub] * dim
+
+    Positions = numpy.zeros((SearchAgents_no, dim))
+    for i in range(dim):
+        Positions[:, i] = (
+                numpy.random.uniform(0, 1, SearchAgents_no) * (ub[i] - lb[i]) + lb[i]
+        )
+
+    Convergence_curve = numpy.zeros(Max_iter)
+    s = solution()
+
+    # The 'no_repeat' branch for detailed exploration metrics is mostly skipped as no_repeat is False.
+    if no_repeat:
+        s.SE_alpha_dist = numpy.zeros(Max_iter * SearchAgents_no)
+        s.alpha_dist_better = numpy.full(Max_iter * SearchAgents_no, numpy.nan)
+        s.alpha_dist_worse = numpy.full(Max_iter * SearchAgents_no, numpy.nan)
+        s.alpha_fitness = numpy.zeros(Max_iter * SearchAgents_no)
+        s.exp_dict["SE"] = [None] * (Max_iter * SearchAgents_no)
+        s.exp_dict["DE"] = [None] * (Max_iter * SearchAgents_no)
+        s.exp_dict["FE"] = [None] * (Max_iter * SearchAgents_no)
+        s.exp_dict["SR"] = [None] * (Max_iter * SearchAgents_no)
+
+    timerStart = time.time()
+    s.startTime = time.strftime("%Y-%m-%d-%H-%M-%S")
+    iter_par_i = 0
+    for l in range(0, Max_iter):  # l is current iteration, from 0 to Max_iter-1
+        for i in range(0, SearchAgents_no):
+            for j in range(dim):
+                Positions[i, j] = numpy.clip(Positions[i, j], lb[j], ub[j])
+
+            fitness = objf(Positions[i, :])
+            old_Alpha_pos = Alpha_pos.copy()
+
+            if no_repeat:  # This branch is skipped if no_repeat is False
+                return_list1 = measure_exploration(Alpha_pos.copy(), Positions[i, :].copy(), objf)
+                exp_type, relF_curr = return_list1[0], return_list1[1]
+                if exp_type != "None":
+                    for key in s.exp_dict:
+                        if key == exp_type:
+                            s.exp_dict[key][iter_par_i] = relF_curr
+                if objf.__name__.startswith("Rastrigin"):
+                    s.L_ref_fitness.append(objf(closest_integer_minima(Alpha_pos)))
+                s.alpha_fitness[iter_par_i] = objf(Alpha_pos)
+
+            if fitness < Alpha_score:
+                Delta_score = Beta_score
+                Delta_pos = Beta_pos.copy()
+                Beta_score = Alpha_score
+                Beta_pos = Alpha_pos.copy()
+                Alpha_score = fitness
+                Alpha_pos = Positions[i, :].copy()
+
+            if fitness > Alpha_score and fitness < Beta_score:
+                Delta_score = Beta_score
+                Delta_pos = Beta_pos.copy()
+                Beta_score = fitness
+                Beta_pos = Positions[i, :].copy()
+
+            if fitness > Alpha_score and fitness > Beta_score and fitness < Delta_score:
+                Delta_score = fitness
+                Delta_pos = Positions[i, :].copy()
+
+            if no_repeat:  # This branch is skipped if no_repeat is False
+                ref_dist_moved = abs(numpy.linalg.norm(numpy.array(old_Alpha_pos) - numpy.array(Alpha_pos)))
+                if objf(Alpha_pos) < objf(old_Alpha_pos):
+                    s.alpha_dist_better[iter_par_i] = ref_dist_moved
+                else:
+                    s.alpha_dist_worse[iter_par_i] = ref_dist_moved
+                return_list2 = measure_exploration(old_Alpha_pos, Alpha_pos, objf)
+                exp_type, relF_curr = return_list2[0], return_list2[1]
+                if exp_type == "SE":
+                    s.alpha_SE_count += 1
+                    distance = abs(numpy.linalg.norm(numpy.array(old_Alpha_pos) - numpy.array(Alpha_pos)))
+                    s.SE_alpha_dist[iter_par_i] = distance
+                else:
+                    s.SE_alpha_dist[iter_par_i] = numpy.nan
+
+            iter_par_i += 1
+            gc.collect()
+
+        a = 2 - l * ((2) / Max_iter)
+
+        for i in range(0, SearchAgents_no):
+            for j in range(0, dim):
+                r1 = random.random()
+                r2 = random.random()
+                A1 = 2 * a * r1 - a
+                C1 = 2 * r2
+                D_alpha = abs(C1 * Alpha_pos[j] - Positions[i, j])
+                X1 = Alpha_pos[j] - A1 * D_alpha
+
+                r1 = random.random()
+                r2 = random.random()
+                A2 = 2 * a * r1 - a
+                C2 = 2 * r2
+                D_beta = abs(C2 * Beta_pos[j] - Positions[i, j])
+                X2 = Beta_pos[j] - A2 * D_beta
+
+                r1 = random.random()
+                r2 = random.random()
+                A3 = 2 * a * r1 - a
+                C3 = 2 * r2
+                D_delta = abs(C3 * Delta_pos[j] - Positions[i, j])
+                X3 = Delta_pos[j] - A3 * D_delta
+
+                Positions[i, j] = (X1 + X2 + X3) / 3
+
+        Convergence_curve[l] = Alpha_score
+
+        # Always track full position histories
+        s.alpha_pos_history.append(Alpha_pos.copy())
+        s.beta_pos_history.append(Beta_pos.copy())
+        s.delta_pos_history.append(
+            Delta_pos.copy())  # Delta history will be same as s.swarm_centroid_history for small SearchAgents_no
+
+        # Calculate swarm centroid
+        s.swarm_centroid_history.append(numpy.mean(Positions, axis=0).copy())
+
+        # Calculate omega-only centroid
+        if SearchAgents_no > 3:
+            current_iteration_fitnesses = numpy.array([objf(pos) for pos in Positions])
+            sorted_indices = numpy.argsort(current_iteration_fitnesses)
+            # Omega wolves are all but the top 3 (Alpha, Beta, Delta)
+            omega_wolves_positions = Positions[sorted_indices[3:], :]
+            if len(omega_wolves_positions) > 0:
+                s.omega_only_centroid_history.append(numpy.mean(omega_wolves_positions, axis=0).copy())
+            else:
+                # If there are no omega wolves (e.g., SearchAgents_no=3), append NaN
+                s.omega_only_centroid_history.append(numpy.full(dim, numpy.nan))
+        else:
+            # If SearchAgents_no is 3 or less, there are no 'other' omega wolves
+            s.omega_only_centroid_history.append(numpy.full(dim, numpy.nan))
+
+        if l % 100 == 0:
+            print(["At iteration " + str(l) + " the best fitness is " + str(Alpha_score)])
+            sys.stdout.flush()
+
+    timerEnd = time.time()
+    s.endTime = time.strftime("%Y-%m-%d-%H-%M-%S")
+    s.executionTime = timerEnd - timerStart
+    s.convergence = Convergence_curve
+    s.optimizer = "GWO"
+    s.bestIndividual = Alpha_pos
+    s.objfname = objf.__name__
+
+    return s
+
+
+# --- SIMULATION PARAMETERS ---
+num_trials = 30
+dim = 30
+Max_iter = 800
+SearchAgents_no = 50
+
+# Define the single specific scenario
+OPTIMUM_SHIFT = 3
+SEARCH_SPACE_LB = -2.12
+SEARCH_SPACE_UB = 8.12
+
+
+obj_function_scenario = rastrigin_function_factory(OPTIMUM_SHIFT)
+scenario_label_print = f"Optimum Shift={OPTIMUM_SHIFT} (Space=[{SEARCH_SPACE_LB}, {SEARCH_SPACE_UB}])"
+
+# --- DATA STORAGE FOR RECORDING ---
+RECORD_INTERVAL = 50
+# Determine the iterations at which to record data
+# We want to record at 0, 50, 100, ..., 550, and also the very last iteration (Max_iter-1)
+recording_indices = list(range(0, Max_iter, RECORD_INTERVAL))
+if (Max_iter - 1) not in recording_indices:
+    recording_indices.append(Max_iter - 1)
+recording_indices.sort()  # Ensure they are in ascending order
+
+# Lists to store recorded data for each trial, which will then be averaged
+all_trials_alpha_pos_at_intervals = []  # List of lists of arrays: [ [iter0_pos_trial1, iter50_pos_trial1, ...], [iter0_pos_trial2, ...], ...]
+all_trials_beta_pos_at_intervals = []
+all_trials_omega_pos_at_intervals = []
+
+all_trials_alpha_dist_at_intervals = []  # List of lists of floats: [ [iter0_dist_trial1, iter50_dist_trial1, ...], ...]
+all_trials_beta_dist_at_intervals = []
+all_trials_omega_dist_at_intervals = []
+
+origin_point = numpy.zeros(dim)  # The point (0,0,...,0)
+
+print(f"\n--- Starting GWO simulations for the specific scenario: {scenario_label_print} ---")
+sys.stdout.flush()
+
+for trial in range(num_trials):
+    print(f"  Running Trial {trial + 1}/{num_trials}")
+    sys.stdout.flush()
+
+    # Run GWO for the specific scenario
+    result = GWO(objf=obj_function_scenario,
+                 lb=SEARCH_SPACE_LB,
+                 ub=SEARCH_SPACE_UB,
+                 dim=dim,
+                 SearchAgents_no=SearchAgents_no,
+                 Max_iter=Max_iter,
+                 no_repeat=False)  # no_repeat set to False as detailed exp metrics are not requested
+
+  
+    trial_alpha_pos_samples = []
+    trial_beta_pos_samples = []
+    trial_omega_pos_samples = []
+    trial_alpha_dist_samples = []
+    trial_beta_dist_samples = []
+    trial_omega_dist_samples = []
+
+    for idx in recording_indices:
+        # Get positions at specific iteration index
+        alpha_pos_at_idx = result.alpha_pos_history[idx]
+        beta_pos_at_idx = result.beta_pos_history[idx]
+        omega_pos_at_idx = result.omega_only_centroid_history[idx]  # This is already the centroid
+
+        # Store positions
+        trial_alpha_pos_samples.append(alpha_pos_at_idx)
+        trial_beta_pos_samples.append(beta_pos_at_idx)
+        trial_omega_pos_samples.append(omega_pos_at_idx)
+
+        # Calculate and store distances from (0,0,...,0)
+        trial_alpha_dist_samples.append(numpy.linalg.norm(alpha_pos_at_idx - origin_point))
+        trial_beta_dist_samples.append(numpy.linalg.norm(beta_pos_at_idx - origin_point))
+        trial_omega_dist_samples.append(numpy.linalg.norm(omega_pos_at_idx - origin_point))
+
+
+    all_trials_alpha_pos_at_intervals.append(trial_alpha_pos_samples)
+    all_trials_beta_pos_at_intervals.append(trial_beta_pos_samples)
+    all_trials_omega_pos_at_intervals.append(trial_omega_pos_samples)
+
+    all_trials_alpha_dist_at_intervals.append(trial_alpha_dist_samples)
+    all_trials_beta_dist_at_intervals.append(trial_beta_dist_samples)
+    all_trials_omega_dist_at_intervals.append(trial_omega_dist_samples)
+
+
+print(
+    f"\n--- Finished all {num_trials} trials. Calculating and printing average results for {scenario_label_print} ---")
+sys.stdout.flush()
+
+# Convert lists to numpy arrays for easy averaging
+# Shape will be (num_trials, num_recording_points, dim) for positions
+# Shape will be (num_trials, num_recording_points) for distances
+avg_alpha_pos_over_trials = numpy.mean(numpy.array(all_trials_alpha_pos_at_intervals), axis=0)
+avg_beta_pos_over_trials = numpy.mean(numpy.array(all_trials_beta_pos_at_intervals), axis=0)
+# Use nanmean for omega due to potential NaNs if SearchAgents_no <= 3
+avg_omega_pos_over_trials = numpy.nanmean(numpy.array(all_trials_omega_pos_at_intervals), axis=0)
+
+avg_alpha_dist_over_trials = numpy.mean(numpy.array(all_trials_alpha_dist_at_intervals), axis=0)
+avg_beta_dist_over_trials = numpy.mean(numpy.array(all_trials_beta_dist_at_intervals), axis=0)
+avg_omega_dist_over_trials = numpy.nanmean(numpy.array(all_trials_omega_dist_at_intervals),
+                                           axis=0)  # Use nanmean for omega
+
+print(f"\n--- Averaged Position Data and Distances from (0,0,...,0) for Scenario: {scenario_label_print} ---")
+print(f"Recording Interval: {RECORD_INTERVAL} iterations")
+sys.stdout.flush()
+
+print(
+    "\n------------------------------------------------------------------------------------------------------------------")
+print(
+    f"{'Iteration':<10} | {'Avg Alpha Pos':<40} | {'Avg Alpha Dist':<15} | {'Avg Beta Pos':<40} | {'Avg Beta Dist':<15} | {'Avg Omega Pos':<40} | {'Avg Omega Dist':<15}")
+print(
+    "------------------------------------------------------------------------------------------------------------------")
+
+for i, iter_idx in enumerate(recording_indices):
+
+    alpha_pos_str = numpy.array2string(avg_alpha_pos_over_trials[i], precision=2)
+    beta_pos_str = numpy.array2string(avg_beta_pos_over_trials[i], precision=2)
+    omega_pos_str = numpy.array2string(avg_omega_pos_over_trials[i], precision=2)
+
+    print(
+        f"{iter_idx:<10} | {alpha_pos_str:<40} | {avg_alpha_dist_over_trials[i]:<15.4f} | {beta_pos_str:<40} | {avg_beta_dist_over_trials[i]:<15.4f} | {omega_pos_str:<40} | {avg_omega_dist_over_trials[i]:<15.4f}")
+    sys.stdout.flush()  # Force flush each line
+
+print(
+    "------------------------------------------------------------------------------------------------------------------")
+print("\n--- End of Averaged Data ---")
+sys.stdout.flush()
+
+print("\nShapes of averaged data arrays:")
+print(f"Avg Alpha Position History: {avg_alpha_pos_over_trials.shape}")
+print(f"Avg Beta Position History: {avg_beta_pos_over_trials.shape}")
+print(f"Avg Omega Position History: {avg_omega_pos_over_trials.shape}")
+print(f"Avg Alpha Distance History: {avg_alpha_dist_over_trials.shape}")
+print(f"Avg Beta Distance History: {avg_beta_dist_over_trials.shape}")
+print(f"Avg Omega Distance History: {avg_omega_dist_over_trials.shape}")
+sys.stdout.flush()
