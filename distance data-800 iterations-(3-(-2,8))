@@ -1,0 +1,24 @@
+import matplotlib.pyplot as plt
+
+# Distance data extracted from your dataset
+iterations = [0, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 599]
+alpha_dist = [16.0152, 17.0286, 16.5158, 16.4530, 16.4720, 15.9485, 15.7745, 15.4422, 15.2958, 15.3340, 15.2114, 15.2324, 15.2391]
+beta_dist = [15.4744, 16.7609, 16.6344, 16.0851, 16.1525, 15.7720, 15.9542, 15.9642, 15.8170, 15.6920, 15.5724, 15.4642, 15.4654]
+omega_dist = [10.1830, 16.4607, 16.1535, 15.8272, 15.9160, 15.6903, 15.5907, 15.5510, 15.4368, 15.4080, 15.2766, 15.2779, 15.2764]
+
+# Plotting the distances
+plt.figure(figsize=(10, 6))
+plt.plot(iterations, alpha_dist, label='Alpha Distance', marker='o')
+plt.plot(iterations, beta_dist, label='Beta Distance', marker='s')
+plt.plot(iterations, omega_dist, label='Omega Distance', marker='^')
+
+# Adding labels and title
+plt.xlabel('Iteration')
+plt.ylabel('Average Distance')
+plt.title('GWO: Average Distance vs Iteration')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+
+# Show the plot
+plt.show()
